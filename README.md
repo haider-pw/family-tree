@@ -30,3 +30,27 @@ A web application to store, update, and visualize family lineage (shajra).
     ```
 
     The application will be available at `http://localhost:3000`.
+
+## Future Development (TODO)
+
+### User Authentication & Authorization
+
+*   **Login System:** Implement a secure user authentication system.
+*   **Role-Based Access Control (RBAC):** Introduce a robust permissions system based on user roles.
+
+#### Roles:
+*   **Owner:**
+    *   Only one Owner for the entire application.
+    *   Has all permissions, which cannot be revoked.
+    *   Can manage permissions for all other users, including Moderators, but not Administrators.
+*   **Administrator:**
+    *   Can be multiple Administrators.
+    *   Has all application permissions, similar to the Owner.
+    *   Permissions are managed by the Owner.
+*   **Moderator:**
+    *   Users with specific content management permissions.
+    *   Permissions are customizable and managed by the Owner.
+*   **User:**
+    *   Registered users with baseline permissions, such as viewing the family tree and managing their own profile.
+*   **Guest:**
+    *   Unauthenticated users with read-only access to public sections of the application.
