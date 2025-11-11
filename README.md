@@ -54,3 +54,14 @@ A web application to store, update, and visualize family lineage (shajra).
     *   Registered users with baseline permissions, such as viewing the family tree and managing their own profile.
 *   **Guest:**
     *   Unauthenticated users with read-only access to public sections of the application.
+
+### Data Management & Persistence
+
+*   **Supabase Integration:** Utilize Supabase for database management.
+*   **Dynamic Tree Generation:** Generate family trees directly from the database instead of static JSON files.
+
+### Advanced Family Tree Management
+
+*   **User-Generated Trees:** Allow individual users to create and manage their own ancestry trees.
+*   **Owner-Defined System Trees:** Enable the Owner to define and manage system-wide family trees.
+*   **Granular Update Permissions:** Implement a system where the Owner can grant specific users permission to view and update designated nodes or child nodes (e.g., children, grandchildren) within a tree.
