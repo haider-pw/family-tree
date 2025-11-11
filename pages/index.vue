@@ -319,7 +319,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useFamilyTreeStore } from '~/stores/familyTree'
 
 definePageMeta({
   middleware: 'auth'
@@ -328,6 +329,7 @@ definePageMeta({
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const router = useRouter()
+const store = useFamilyTreeStore()
 
 const title = 'Shajra - Family Lineage Tracker'
 useHead({
@@ -339,15 +341,22 @@ const progenyDepth = ref(2)
 const controlsVisible = ref(true)
 const isDark = ref(false)
 
-const { data: familyData, pending, error, refresh } = useFetch('/api/shajra-data')
+// Use store data instead of static API
+const familyData = computed(() => store.chartData)
+const pending = computed(() => store.loading)
+const error = computed(() => store.error ? { message: store.error } : null)
 
-onMounted(() => {
+// Initialize store on mount
+onMounted(async () => {
   // Check system preference and localStorage
   const stored = localStorage.getItem('theme')
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 
   isDark.value = stored === 'dark' || (!stored && prefersDark)
   updateTheme()
+
+  // Initialize family tree store
+  await store.initialize()
 })
 
 function toggleDarkMode() {
@@ -373,9 +382,20 @@ async function handleLogout() {
   try {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+
+    // Clear store on logout
+    store.clearState()
+
     router.push('/login')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error logging out:', error.message)
+  }
+}
+
+// Function to refresh data
+async function refresh() {
+  if (store.activeTreeId) {
+    await store.fetchTreeData(store.activeTreeId)
   }
 }
 </script>

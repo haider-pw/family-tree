@@ -9,12 +9,17 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "db:migrate": "bash scripts/run-migration.sh",
+    "db:setup": "yarn db:migrate",
+    "supabase:setup": "echo '💡 Install Supabase CLI: npm install -g supabase' && echo '📖 Then run: supabase link' && echo '🚀 Then run: supabase db push'"
   },
   "dependencies": {
     "@nuxtjs/supabase": "^2.0.1",
+    "@pinia/nuxt": "^0.11.3",
     "family-chart": "^0.9.0",
     "nuxt": "latest",
+    "pinia": "^3.0.4",
     "vue": "latest"
   },
   "devDependencies": {

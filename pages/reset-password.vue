@@ -1,21 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const supabase = useSupabaseClient()
 const router = useRouter()
+const route = useRoute()
 
-const email = ref('')
+// Form state
 const password = ref('')
 const confirmPassword = ref('')
-const acceptTerms = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
 const loading = ref(false)
 const isDark = ref(false)
+const tokenError = ref(false)
 
+// Dark mode initialization
 onMounted(() => {
   // Check system preference and localStorage
   const stored = localStorage.getItem('theme')
@@ -23,6 +25,13 @@ onMounted(() => {
 
   isDark.value = stored === 'dark' || (!stored && prefersDark)
   updateTheme()
+
+  // Check if we have a valid token/hash in the URL
+  const hash = window.location.hash
+  if (!hash || (!hash.includes('access_token') && !hash.includes('type=recovery'))) {
+    tokenError.value = true
+    errorMsg.value = 'Invalid or expired password reset link. Please request a new one.'
+  }
 })
 
 function toggleDarkMode() {
@@ -74,7 +83,8 @@ const passwordsMatch = computed(() => {
   return password.value === confirmPassword.value
 })
 
-const handleSignup = async () => {
+// Handle password reset
+const handleResetPassword = async () => {
   try {
     loading.value = true
     errorMsg.value = ''
@@ -91,31 +101,34 @@ const handleSignup = async () => {
       return
     }
 
-    if (!acceptTerms.value) {
-      errorMsg.value = 'Please accept the terms and conditions'
+    // Additional password strength validation
+    if (passwordStrength.value.label === 'Weak') {
+      errorMsg.value = 'Please choose a stronger password for better security'
       return
     }
 
-    const { error } = await supabase.auth.signUp({
-      email: email.value,
+    // Update password using Supabase
+    const { error } = await supabase.auth.updateUser({
       password: password.value,
     })
 
     if (error) {
       errorMsg.value = error.message
     } else {
-      successMsg.value = 'Registration successful! Please check your email to confirm your account.'
+      successMsg.value = 'Password updated successfully! Redirecting to login...'
+
       // Clear form
-      email.value = ''
       password.value = ''
       confirmPassword.value = ''
-      acceptTerms.value = false
 
-      // Redirect to login after 4 seconds
-      setTimeout(() => router.push('/login'), 4000)
+      // Sign out to ensure clean state
+      await supabase.auth.signOut()
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => router.push('/login'), 2000)
     }
-  } catch (error) {
-    errorMsg.value = error.message
+  } catch (error: any) {
+    errorMsg.value = error.message || 'An unexpected error occurred'
   } finally {
     loading.value = false
   }
@@ -141,20 +154,20 @@ const handleSignup = async () => {
     <div class="flex min-h-screen">
       <!-- Left Side - Brand Experience (Hidden on mobile) -->
       <div class="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <!-- Gradient Overlay -->
-        <div class="absolute inset-0 bg-gradient-to-br from-heritage-teal via-heritage-green/95 to-heritage-green-dark dark:from-heritage-teal/80 dark:via-heritage-green-dark/90 dark:to-surface-dark z-10" />
+        <!-- Gradient Overlay - Different variation for reset password -->
+        <div class="absolute inset-0 bg-gradient-to-br from-heritage-green-dark via-heritage-teal to-heritage-green dark:from-surface-dark dark:via-heritage-green-dark/90 dark:to-heritage-gold/60 z-10" />
 
         <!-- Geometric Pattern Background -->
         <div class="absolute inset-0 opacity-10 dark:opacity-5 z-0">
           <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <pattern id="heritage-pattern-signup" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+              <pattern id="heritage-pattern-reset" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
                 <path d="M50 0 L100 50 L50 100 L0 50 Z M50 25 L75 50 L50 75 L25 50 Z" fill="currentColor" class="text-white dark:text-heritage-gold" />
                 <circle cx="50" cy="50" r="8" fill="currentColor" class="text-white dark:text-heritage-gold" />
                 <circle cx="50" cy="50" r="4" fill="none" stroke="currentColor" stroke-width="1" class="text-white dark:text-heritage-gold" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#heritage-pattern-signup)" />
+            <rect width="100%" height="100%" fill="url(#heritage-pattern-reset)" />
           </svg>
         </div>
 
@@ -179,46 +192,47 @@ const handleSignup = async () => {
           <div class="space-y-6 max-w-md">
             <div class="space-y-4">
               <h2 class="text-4xl xl:text-5xl font-serif font-bold leading-tight">
-                Begin Your Heritage Journey
+                Create a Strong Password
               </h2>
               <p class="text-lg text-white/90 dark:text-white/80 leading-relaxed">
-                Create your account and start documenting your family's sacred lineage for generations to come.
+                Choose a secure password to protect your family's precious lineage data. Your heritage deserves the strongest protection.
               </p>
             </div>
 
-            <!-- Benefits -->
+            <!-- Security Tips -->
             <div class="space-y-4 pt-4">
+              <h3 class="text-sm font-semibold uppercase tracking-wider text-white/80 dark:text-white/70">Password Security Tips</h3>
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-lg bg-white/20 dark:bg-heritage-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 class="font-semibold mb-1">Build Your Family Tree</h3>
-                  <p class="text-sm text-white/80 dark:text-white/70">Document unlimited family members and relationships</p>
+                  <h3 class="font-semibold mb-1">Minimum 8 characters</h3>
+                  <p class="text-sm text-white/80 dark:text-white/70">Longer passwords are more secure</p>
                 </div>
               </div>
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-lg bg-white/20 dark:bg-heritage-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 class="font-semibold mb-1">Secure & Encrypted</h3>
-                  <p class="text-sm text-white/80 dark:text-white/70">Your family data is protected with enterprise-grade security</p>
+                  <h3 class="font-semibold mb-1">Mix character types</h3>
+                  <p class="text-sm text-white/80 dark:text-white/70">Use uppercase, lowercase, numbers, and symbols</p>
                 </div>
               </div>
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-lg bg-white/20 dark:bg-heritage-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 class="font-semibold mb-1">Beautiful Visualization</h3>
-                  <p class="text-sm text-white/80 dark:text-white/70">See your lineage come to life with interactive charts</p>
+                  <h3 class="font-semibold mb-1">Avoid common words</h3>
+                  <p class="text-sm text-white/80 dark:text-white/70">Don't use dictionary words or personal info</p>
                 </div>
               </div>
             </div>
@@ -227,16 +241,16 @@ const handleSignup = async () => {
           <!-- Footer Quote -->
           <div class="border-l-2 border-white/30 dark:border-heritage-gold/30 pl-4 py-2 max-w-md">
             <p class="text-sm italic text-white/90 dark:text-white/80">
-              "The best time to plant a tree was 20 years ago. The second best time is now."
+              "A strong password is the key to safeguarding generations of heritage"
             </p>
             <p class="text-xs text-white/70 dark:text-white/60 mt-1">
-              — Start preserving your heritage today
+              — Protect what matters most
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Right Side - Signup Form -->
+      <!-- Right Side - Reset Password Form -->
       <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div class="w-full max-w-md">
           <!-- Mobile Logo (visible only on mobile) -->
@@ -256,12 +270,40 @@ const handleSignup = async () => {
           <div class="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl rounded-2xl border border-heritage-green/10 dark:border-heritage-gold/10 shadow-2xl p-8 sm:p-10">
             <!-- Header -->
             <div class="mb-8">
+              <div class="w-14 h-14 rounded-xl bg-heritage-green/10 dark:bg-heritage-gold/10 flex items-center justify-center mb-4">
+                <svg class="w-7 h-7 text-heritage-green dark:text-heritage-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
               <h2 class="text-3xl font-serif font-bold text-text-primary-light dark:text-text-primary-dark mb-2">
-                Create Account
+                Set New Password
               </h2>
               <p class="text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                Join Shajra and begin documenting your family lineage
+                Create a strong password to secure your account
               </p>
+            </div>
+
+            <!-- Token Error Message -->
+            <div
+              v-if="tokenError"
+              class="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 flex items-start gap-3"
+            >
+              <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="flex-1">
+                <h4 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Invalid Link</h4>
+                <p class="text-sm text-red-700 dark:text-red-400 mb-3">{{ errorMsg }}</p>
+                <NuxtLink
+                  to="/forgot-password"
+                  class="inline-flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors"
+                >
+                  Request new reset link
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </NuxtLink>
+              </div>
             </div>
 
             <!-- Success Message -->
@@ -280,46 +322,24 @@ const handleSignup = async () => {
 
             <!-- Error Message -->
             <div
-              v-if="errorMsg"
+              v-if="errorMsg && !tokenError"
               class="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 flex items-start gap-3 animate-shake"
             >
               <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div class="flex-1">
-                <h4 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Registration Error</h4>
+                <h4 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Error</h4>
                 <p class="text-sm text-red-700 dark:text-red-400">{{ errorMsg }}</p>
               </div>
             </div>
 
             <!-- Form -->
-            <form @submit.prevent="handleSignup" class="space-y-5">
-              <!-- Email Input -->
-              <div class="space-y-2">
-                <label for="email" class="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                  Email Address
-                </label>
-                <div class="relative">
-                  <div class="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                  </div>
-                  <input
-                    type="email"
-                    id="email"
-                    v-model="email"
-                    required
-                    placeholder="your.email@example.com"
-                    class="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-forest-dark border border-heritage-green/20 dark:border-heritage-gold/20 rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-              </div>
-
-              <!-- Password Input -->
+            <form v-if="!tokenError" @submit.prevent="handleResetPassword" class="space-y-5">
+              <!-- New Password Input -->
               <div class="space-y-2">
                 <label for="password" class="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                  Password
+                  New Password
                 </label>
                 <div class="relative">
                   <div class="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
@@ -332,8 +352,10 @@ const handleSignup = async () => {
                     id="password"
                     v-model="password"
                     required
+                    autocomplete="new-password"
                     placeholder="Create a strong password"
-                    class="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-forest-dark border border-heritage-green/20 dark:border-heritage-gold/20 rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:border-transparent transition-all duration-200"
+                    :disabled="loading || !!successMsg"
+                    class="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-forest-dark border border-heritage-green/20 dark:border-heritage-gold/20 rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   />
                   <button
                     type="button"
@@ -377,7 +399,7 @@ const handleSignup = async () => {
               <!-- Confirm Password Input -->
               <div class="space-y-2">
                 <label for="confirmPassword" class="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                  Confirm Password
+                  Confirm New Password
                 </label>
                 <div class="relative">
                   <div class="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
@@ -390,8 +412,10 @@ const handleSignup = async () => {
                     id="confirmPassword"
                     v-model="confirmPassword"
                     required
+                    autocomplete="new-password"
                     placeholder="Re-enter your password"
-                    class="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-forest-dark border rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 transition-all duration-200"
+                    :disabled="loading || !!successMsg"
+                    class="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-forest-dark border rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     :class="[
                       !confirmPassword || passwordsMatch
                         ? 'border-heritage-green/20 dark:border-heritage-gold/20 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:border-transparent'
@@ -421,57 +445,50 @@ const handleSignup = async () => {
                 </p>
               </div>
 
-              <!-- Terms and Conditions -->
-              <div class="pt-2">
-                <label class="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    v-model="acceptTerms"
-                    class="mt-1 w-4 h-4 rounded border-heritage-green/30 dark:border-heritage-gold/30 text-heritage-green dark:text-heritage-gold focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:ring-offset-0 transition-colors"
-                  />
-                  <span class="text-sm text-text-secondary-light dark:text-text-secondary-dark group-hover:text-text-primary-light dark:group-hover:text-text-primary-dark transition-colors leading-relaxed">
-                    I agree to the
-                    <button type="button" class="text-heritage-green dark:text-heritage-gold hover:underline font-medium">Terms of Service</button>
-                    and
-                    <button type="button" class="text-heritage-green dark:text-heritage-gold hover:underline font-medium">Privacy Policy</button>
-                  </span>
-                </label>
+              <!-- Security Notice -->
+              <div class="p-3 rounded-lg bg-heritage-green/5 dark:bg-heritage-gold/5 border border-heritage-green/10 dark:border-heritage-gold/10">
+                <p class="text-xs text-text-secondary-light dark:text-text-secondary-dark flex items-start gap-2">
+                  <svg class="w-4 h-4 flex-shrink-0 mt-0.5 text-heritage-green dark:text-heritage-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span>After resetting your password, you'll be signed out and need to log in again with your new password.</span>
+                </p>
               </div>
 
               <!-- Submit Button -->
               <button
                 type="submit"
-                :disabled="loading || !passwordsMatch"
+                :disabled="loading || !passwordsMatch || !!successMsg"
                 class="w-full py-3.5 rounded-xl font-semibold text-white dark:text-text-primary-light bg-gradient-to-r from-heritage-green to-heritage-teal dark:from-heritage-gold dark:to-heritage-gold-dark hover:shadow-lg hover:shadow-heritage-green/25 dark:hover:shadow-heritage-gold/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 group"
               >
                 <svg v-if="loading" class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>{{ loading ? 'Creating account...' : 'Create Account' }}</span>
+                <span>{{ loading ? 'Updating password...' : 'Reset Password' }}</span>
                 <svg v-if="!loading" class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </button>
             </form>
 
-            <!-- Login Link -->
+            <!-- Back to Login Link -->
             <div class="mt-8 pt-6 border-t border-heritage-green/10 dark:border-heritage-gold/10">
-              <p class="text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                Already have an account?
-                <NuxtLink
-                  to="/login"
-                  class="font-semibold text-heritage-green dark:text-heritage-gold hover:underline ml-1 transition-colors"
-                >
-                  Sign in
-                </NuxtLink>
-              </p>
+              <NuxtLink
+                to="/login"
+                class="flex items-center justify-center gap-2 text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-heritage-green dark:hover:text-heritage-gold transition-colors group"
+              >
+                <svg class="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span class="font-medium">Back to login</span>
+              </NuxtLink>
             </div>
           </div>
 
           <!-- Footer Info -->
           <p class="text-center text-xs text-text-secondary-light dark:text-text-secondary-dark mt-6">
-            We'll send you a confirmation email to verify your account
+            Need help? Contact support at support@shajra.com
           </p>
         </div>
       </div>
@@ -496,11 +513,6 @@ button:focus-visible,
 input:focus-visible,
 a:focus-visible {
   @apply outline-none ring-2 ring-heritage-green dark:ring-heritage-gold ring-offset-2 ring-offset-parchment dark:ring-offset-forest-dark;
-}
-
-/* Ensure checkboxes work properly */
-input[type="checkbox"] {
-  @apply cursor-pointer;
 }
 
 /* Reduced motion support */

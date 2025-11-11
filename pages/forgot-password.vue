@@ -1,18 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 
 const supabase = useSupabaseClient()
-const router = useRouter()
 
+// Form state
 const email = ref('')
-const password = ref('')
-const rememberMe = ref(false)
-const showPassword = ref(false)
 const errorMsg = ref('')
+const successMsg = ref('')
 const loading = ref(false)
 const isDark = ref(false)
 
+// Dark mode initialization
 onMounted(() => {
   // Check system preference and localStorage
   const stored = localStorage.getItem('theme')
@@ -37,43 +35,38 @@ function updateTheme() {
   }
 }
 
-const handleLogin = async () => {
+// Handle password reset request
+const handleForgotPassword = async () => {
   try {
     loading.value = true
     errorMsg.value = ''
+    successMsg.value = ''
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.value,
-      password: password.value,
+    // Validate email
+    if (!email.value || !email.value.includes('@')) {
+      errorMsg.value = 'Please enter a valid email address'
+      return
+    }
+
+    // Request password reset from Supabase
+    const { error } = await supabase.auth.resetPasswordForEmail(email.value, {
+      redirectTo: `${window.location.origin}/reset-password`,
     })
 
     if (error) {
       errorMsg.value = error.message
     } else {
-      // Store remember me preference
-      if (rememberMe.value) {
-        localStorage.setItem('rememberEmail', email.value)
-      } else {
-        localStorage.removeItem('rememberEmail')
-      }
-
-      router.push('/')
+      // Show success message (generic for security)
+      successMsg.value = 'If an account exists with this email, you\'ll receive a password reset link shortly. Please check your inbox and spam folder.'
+      // Clear email field
+      email.value = ''
     }
-  } catch (error) {
-    errorMsg.value = error.message
+  } catch (error: any) {
+    errorMsg.value = error.message || 'An unexpected error occurred'
   } finally {
     loading.value = false
   }
 }
-
-// Load remembered email
-onMounted(() => {
-  const rememberedEmail = localStorage.getItem('rememberEmail')
-  if (rememberedEmail) {
-    email.value = rememberedEmail
-    rememberMe.value = true
-  }
-})
 </script>
 
 <template>
@@ -95,20 +88,20 @@ onMounted(() => {
     <div class="flex min-h-screen">
       <!-- Left Side - Brand Experience (Hidden on mobile) -->
       <div class="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <!-- Gradient Overlay -->
-        <div class="absolute inset-0 bg-gradient-to-br from-heritage-green via-heritage-green/95 to-heritage-teal dark:from-surface-dark dark:via-heritage-green-dark/90 dark:to-heritage-teal/80 z-10" />
+        <!-- Gradient Overlay - Different variation for forgot password -->
+        <div class="absolute inset-0 bg-gradient-to-br from-heritage-teal via-heritage-green to-heritage-green-dark dark:from-heritage-green-dark/90 dark:via-heritage-teal/80 dark:to-surface-dark z-10" />
 
         <!-- Geometric Pattern Background -->
         <div class="absolute inset-0 opacity-10 dark:opacity-5 z-0">
           <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <pattern id="heritage-pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+              <pattern id="heritage-pattern-forgot" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
                 <path d="M50 0 L100 50 L50 100 L0 50 Z M50 25 L75 50 L50 75 L25 50 Z" fill="currentColor" class="text-white dark:text-heritage-gold" />
                 <circle cx="50" cy="50" r="8" fill="currentColor" class="text-white dark:text-heritage-gold" />
                 <circle cx="50" cy="50" r="4" fill="none" stroke="currentColor" stroke-width="1" class="text-white dark:text-heritage-gold" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#heritage-pattern)" />
+            <rect width="100%" height="100%" fill="url(#heritage-pattern-forgot)" />
           </svg>
         </div>
 
@@ -133,46 +126,46 @@ onMounted(() => {
           <div class="space-y-6 max-w-md">
             <div class="space-y-4">
               <h2 class="text-4xl xl:text-5xl font-serif font-bold leading-tight">
-                Welcome Back to Your Heritage
+                Restore Your Access
               </h2>
               <p class="text-lg text-white/90 dark:text-white/80 leading-relaxed">
-                Continue exploring and preserving your family's sacred lineage. Your genealogical journey awaits.
+                Enter your email address and we'll send you a secure link to reset your password and regain access to your family tree.
               </p>
             </div>
 
-            <!-- Features -->
+            <!-- Security Features -->
             <div class="space-y-4 pt-4">
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-lg bg-white/20 dark:bg-heritage-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 class="font-semibold mb-1">Secure & Private</h3>
-                  <p class="text-sm text-white/80 dark:text-white/70">Your family data is encrypted and protected</p>
+                  <h3 class="font-semibold mb-1">Secure Process</h3>
+                  <p class="text-sm text-white/80 dark:text-white/70">Password reset links expire after one hour for your protection</p>
                 </div>
               </div>
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-lg bg-white/20 dark:bg-heritage-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 class="font-semibold mb-1">Visual Family Trees</h3>
-                  <p class="text-sm text-white/80 dark:text-white/70">Interactive charts spanning generations</p>
+                  <h3 class="font-semibold mb-1">Email Verification</h3>
+                  <p class="text-sm text-white/80 dark:text-white/70">Check your inbox for the reset link (check spam folder too)</p>
                 </div>
               </div>
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-lg bg-white/20 dark:bg-heritage-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 class="font-semibold mb-1">Heritage Preservation</h3>
-                  <p class="text-sm text-white/80 dark:text-white/70">Honor and document your ancestral legacy</p>
+                  <h3 class="font-semibold mb-1">Data Protection</h3>
+                  <p class="text-sm text-white/80 dark:text-white/70">Your family data remains encrypted and secure</p>
                 </div>
               </div>
             </div>
@@ -181,16 +174,16 @@ onMounted(() => {
           <!-- Footer Quote -->
           <div class="border-l-2 border-white/30 dark:border-heritage-gold/30 pl-4 py-2 max-w-md">
             <p class="text-sm italic text-white/90 dark:text-white/80">
-              "He who does not know his lineage, his genealogy will be lost"
+              "Security is not just a feature; it's the foundation of trust"
             </p>
             <p class="text-xs text-white/70 dark:text-white/60 mt-1">
-              — Traditional Saying
+              — Your heritage is safe with us
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Right Side - Login Form -->
+      <!-- Right Side - Forgot Password Form -->
       <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div class="w-full max-w-md">
           <!-- Mobile Logo (visible only on mobile) -->
@@ -210,12 +203,31 @@ onMounted(() => {
           <div class="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl rounded-2xl border border-heritage-green/10 dark:border-heritage-gold/10 shadow-2xl p-8 sm:p-10">
             <!-- Header -->
             <div class="mb-8">
+              <div class="w-14 h-14 rounded-xl bg-heritage-green/10 dark:bg-heritage-gold/10 flex items-center justify-center mb-4">
+                <svg class="w-7 h-7 text-heritage-green dark:text-heritage-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
               <h2 class="text-3xl font-serif font-bold text-text-primary-light dark:text-text-primary-dark mb-2">
-                Welcome Back
+                Forgot Password?
               </h2>
               <p class="text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                Sign in to access your family tree
+                No worries, we'll send you reset instructions
               </p>
+            </div>
+
+            <!-- Success Message -->
+            <div
+              v-if="successMsg"
+              class="mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 flex items-start gap-3"
+            >
+              <svg class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="flex-1">
+                <h4 class="text-sm font-semibold text-green-800 dark:text-green-300 mb-1">Email Sent</h4>
+                <p class="text-sm text-green-700 dark:text-green-400">{{ successMsg }}</p>
+              </div>
             </div>
 
             <!-- Error Message -->
@@ -227,13 +239,13 @@ onMounted(() => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div class="flex-1">
-                <h4 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Authentication Error</h4>
+                <h4 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">Error</h4>
                 <p class="text-sm text-red-700 dark:text-red-400">{{ errorMsg }}</p>
               </div>
             </div>
 
             <!-- Form -->
-            <form @submit.prevent="handleLogin" class="space-y-6">
+            <form @submit.prevent="handleForgotPassword" class="space-y-6">
               <!-- Email Input -->
               <div class="space-y-2">
                 <label for="email" class="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
@@ -250,102 +262,57 @@ onMounted(() => {
                     id="email"
                     v-model="email"
                     required
+                    autocomplete="email"
                     placeholder="your.email@example.com"
-                    class="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-forest-dark border border-heritage-green/20 dark:border-heritage-gold/20 rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:border-transparent transition-all duration-200"
+                    :disabled="loading || !!successMsg"
+                    class="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-forest-dark border border-heritage-green/20 dark:border-heritage-gold/20 rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   />
                 </div>
-              </div>
-
-              <!-- Password Input -->
-              <div class="space-y-2">
-                <label for="password" class="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                  Password
-                </label>
-                <div class="relative">
-                  <div class="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
-                  <input
-                    :type="showPassword ? 'text' : 'password'"
-                    id="password"
-                    v-model="password"
-                    required
-                    placeholder="Enter your password"
-                    class="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-forest-dark border border-heritage-green/20 dark:border-heritage-gold/20 rounded-xl text-text-primary-light dark:text-text-primary-dark placeholder:text-text-secondary-light/50 dark:placeholder:text-text-secondary-dark/50 focus:outline-none focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:border-transparent transition-all duration-200"
-                  />
-                  <button
-                    type="button"
-                    @click="showPassword = !showPassword"
-                    class="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary-light dark:text-text-secondary-dark hover:text-heritage-green dark:hover:text-heritage-gold transition-colors"
-                    aria-label="Toggle password visibility"
-                  >
-                    <svg v-if="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Remember Me & Forgot Password -->
-              <div class="flex items-center justify-between">
-                <label class="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    v-model="rememberMe"
-                    class="w-4 h-4 rounded border-heritage-green/30 dark:border-heritage-gold/30 text-heritage-green dark:text-heritage-gold focus:ring-2 focus:ring-heritage-green dark:focus:ring-heritage-gold focus:ring-offset-0 transition-colors"
-                  />
-                  <span class="text-sm text-text-secondary-light dark:text-text-secondary-dark group-hover:text-text-primary-light dark:group-hover:text-text-primary-dark transition-colors">
-                    Remember me
-                  </span>
-                </label>
-                <NuxtLink
-                  to="/forgot-password"
-                  class="text-sm text-heritage-green dark:text-heritage-gold hover:underline font-medium transition-colors"
-                >
-                  Forgot password?
-                </NuxtLink>
+                <p class="text-xs text-text-secondary-light dark:text-text-secondary-dark flex items-center gap-1.5">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Enter the email address associated with your account
+                </p>
               </div>
 
               <!-- Submit Button -->
               <button
                 type="submit"
-                :disabled="loading"
+                :disabled="loading || !!successMsg"
                 class="w-full py-3.5 rounded-xl font-semibold text-white dark:text-text-primary-light bg-gradient-to-r from-heritage-green to-heritage-teal dark:from-heritage-gold dark:to-heritage-gold-dark hover:shadow-lg hover:shadow-heritage-green/25 dark:hover:shadow-heritage-gold/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 group"
               >
                 <svg v-if="loading" class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>{{ loading ? 'Signing in...' : 'Sign In' }}</span>
-                <svg v-if="!loading" class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-else-if="!successMsg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span>{{ loading ? 'Sending reset link...' : successMsg ? 'Email sent' : 'Send Reset Link' }}</span>
+                <svg v-if="!loading && !successMsg" class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </button>
             </form>
 
-            <!-- Sign Up Link -->
+            <!-- Back to Login Link -->
             <div class="mt-8 pt-6 border-t border-heritage-green/10 dark:border-heritage-gold/10">
-              <p class="text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                Don't have an account?
-                <NuxtLink
-                  to="/signup"
-                  class="font-semibold text-heritage-green dark:text-heritage-gold hover:underline ml-1 transition-colors"
-                >
-                  Create an account
-                </NuxtLink>
-              </p>
+              <NuxtLink
+                to="/login"
+                class="flex items-center justify-center gap-2 text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-heritage-green dark:hover:text-heritage-gold transition-colors group"
+              >
+                <svg class="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span class="font-medium">Back to login</span>
+              </NuxtLink>
             </div>
           </div>
 
           <!-- Footer Info -->
           <p class="text-center text-xs text-text-secondary-light dark:text-text-secondary-dark mt-6">
-            By signing in, you agree to our Terms of Service and Privacy Policy
+            Need help? Contact support at support@shajra.com
           </p>
         </div>
       </div>
@@ -370,11 +337,6 @@ button:focus-visible,
 input:focus-visible,
 a:focus-visible {
   @apply outline-none ring-2 ring-heritage-green dark:ring-heritage-gold ring-offset-2 ring-offset-parchment dark:ring-offset-forest-dark;
-}
-
-/* Ensure checkboxes work properly */
-input[type="checkbox"] {
-  @apply cursor-pointer;
 }
 
 /* Reduced motion support */
