@@ -1,0 +1,29 @@
+{
+  "name": "shajra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "family-chart": "^0.9.0",
+    "nuxt": "latest",
+    "vue": "latest"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "latest",
+    "@nuxtjs/tailwindcss": "latest",
+    "@types/node": "^24.10.0",
+    "eslint": "latest",
+    "prettier": "latest",
+    "typescript": "latest",
+    "vue-tsc": "latest"
+  },
+  "packageManager": "yarn@1.22.19"
+}
