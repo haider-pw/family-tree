@@ -31,24 +31,25 @@ const renderChart = () => {
         .setProgenyDepth(props.progenyDepth);
 
       const cardHtml = (d: TreeDatum) => {
-        const data = d.data;
+        // d.data contains the nested data object from our JSON
+        const personData = d.data.data;
         const isMain = familyChartInstance?.getMainDatum().id === d.data.id;
 
         return `
-          <div class="node-card glass-card" data-gender="${data.gender || 'M'}" data-main="${isMain}">
+          <div class="node-card glass-card" data-gender="${personData.gender || 'M'}" data-main="${isMain}">
             <div class="card-border"></div>
             <div class="card-inner">
-              ${data.img ? `
+              ${personData.img ? `
                 <div class="avatar">
-                  <img src="${data.img}" alt="${data.name}" />
+                  <img src="${personData.img}" alt="${personData.name}" />
                 </div>
               ` : `
                 <div class="avatar avatar-placeholder">
-                  <span class="avatar-initial">${data.name ? data.name.charAt(0) : '?'}</span>
+                  <span class="avatar-initial">${personData.name ? personData.name.charAt(0) : '?'}</span>
                 </div>
               `}
               <div class="card-content">
-                <div class="name">${data.name}</div>
+                <div class="name">${personData.name || 'Unknown'}</div>
                 ${isMain ? `<div class="relationship">Main Person</div>` : ''}
               </div>
             </div>

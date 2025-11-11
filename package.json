@@ -12,6 +12,7 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@nuxtjs/supabase": "^2.0.1",
     "family-chart": "^0.9.0",
     "nuxt": "latest",
     "vue": "latest"

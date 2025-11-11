@@ -36,13 +36,29 @@
             </svg>
           </button>
 
-          <!-- Export Button (Desktop only) -->
-          <button class="hidden md:flex h-10 px-4 rounded-lg bg-heritage-green hover:bg-heritage-green-dark dark:bg-heritage-gold dark:hover:bg-heritage-gold-dark transition-colors items-center gap-2 text-white dark:text-text-primary-light font-medium text-sm">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export
-          </button>
+          <template v-if="user">
+            <span class="text-sm text-text-primary-light dark:text-text-primary-dark hidden md:block">{{ user.email }}</span>
+            <button
+              @click="handleLogout"
+              class="h-10 px-4 rounded-lg bg-red-600 hover:bg-red-700 transition-colors text-white font-medium text-sm"
+            >
+              Logout
+            </button>
+          </template>
+          <template v-else>
+            <NuxtLink
+              to="/login"
+              class="h-10 px-4 rounded-lg bg-heritage-green hover:bg-heritage-green-dark dark:bg-heritage-gold dark:hover:bg-heritage-gold-dark transition-colors flex items-center text-white dark:text-text-primary-light font-medium text-sm"
+            >
+              Login
+            </NuxtLink>
+            <NuxtLink
+              to="/signup"
+              class="h-10 px-4 rounded-lg bg-heritage-teal hover:bg-heritage-teal-dark transition-colors hidden md:flex items-center text-white dark:text-text-primary-light font-medium text-sm"
+            >
+              Sign Up
+            </NuxtLink>
+          </template>
         </div>
       </div>
     </header>
@@ -305,6 +321,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+definePageMeta({
+  middleware: 'auth'
+})
+
+const user = useSupabaseUser()
+const supabase = useSupabaseClient()
+const router = useRouter()
+
 const title = 'Shajra - Family Lineage Tracker'
 useHead({
   title
@@ -343,6 +367,16 @@ function updateTheme() {
 
 function toggleControls() {
   controlsVisible.value = !controlsVisible.value
+}
+
+async function handleLogout() {
+  try {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+    router.push('/login')
+  } catch (error) {
+    console.error('Error logging out:', error.message)
+  }
 }
 </script>
 

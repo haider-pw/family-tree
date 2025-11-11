@@ -24,7 +24,15 @@ A web application to store, update, and visualize family lineage (shajra).
     yarn install
     ```
 
-2.  **Start the development server:**
+2.  **Configure Supabase Environment Variables:**
+    Create a `.env` file in the project root with your Supabase project URL and anonymous key:
+    ```
+    SUPABASE_URL="YOUR_SUPABASE_URL"
+    SUPABASE_KEY="YOUR_SUPABASE_ANON_KEY"
+    ```
+    You can find these in your Supabase project settings under "API".
+
+3.  **Start the development server:**
     ```bash
     yarn dev
     ```
@@ -36,6 +44,7 @@ A web application to store, update, and visualize family lineage (shajra).
 ### User Authentication & Authorization
 
 *   **Login System:** Implement a secure user authentication system.
+*   **Social Logins:** Integrate Google and GitHub based login options (future).
 *   **Role-Based Access Control (RBAC):** Introduce a robust permissions system based on user roles.
 
 #### Roles:
