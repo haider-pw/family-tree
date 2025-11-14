@@ -3,13 +3,14 @@
  * Creates a new family tree for the authenticated user
  */
 
+import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
 import type { FamilyTree, FamilyTreeInput } from '~/types/database';
 
 export default defineEventHandler(async (event) => {
   // Require user authentication
-  const user = await requireUserSession(event);
+  const user = await serverSupabaseUser(event);
 
-  if (!user) {
+  if (!user || !user.sub) {
     throw createError({
       statusCode: 401,
       message: 'Unauthorized - User not authenticated',
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
     const { data, error } = await supabase
       .from('family_trees')
       .insert({
-        user_id: user.user.id,
+        user_id: user.sub,
         name: body.name.trim(),
         description: body.description || null,
         is_default: body.is_default || false,

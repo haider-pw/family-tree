@@ -3,13 +3,14 @@
  * Fetches a specific family tree with all members and relationships
  */
 
+import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
 import type { FamilyTreeWithMembers } from '~/types/database';
 
 export default defineEventHandler(async (event) => {
   // Require user authentication
-  const user = await requireUserSession(event);
+  const user = await serverSupabaseUser(event);
 
-  if (!user) {
+  if (!user || !user.sub) {
     throw createError({
       statusCode: 401,
       message: 'Unauthorized - User not authenticated',
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
       .from('family_trees')
       .select('*')
       .eq('id', treeId)
-      .eq('user_id', user.user.id)
+      .eq('user_id', user.sub)
       .single();
 
     if (treeError) {

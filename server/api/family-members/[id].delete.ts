@@ -3,11 +3,13 @@
  * Deletes a specific family member and all their relationships (cascade)
  */
 
+import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
+
 export default defineEventHandler(async (event) => {
   // Require user authentication
-  const user = await requireUserSession(event);
+  const user = await serverSupabaseUser(event);
 
-  if (!user) {
+  if (!user || !user.sub) {
     throw createError({
       statusCode: 401,
       message: 'Unauthorized - User not authenticated',
@@ -45,7 +47,7 @@ export default defineEventHandler(async (event) => {
       .from('family_trees')
       .select('id')
       .eq('id', memberData.tree_id)
-      .eq('user_id', user.user.id)
+      .eq('user_id', user.sub)
       .single();
 
     if (treeError || !treeData) {

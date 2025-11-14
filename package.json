@@ -31,5 +31,5 @@
     "typescript": "latest",
     "vue-tsc": "latest"
   },
-  "packageManager": "yarn@1.22.19"
+  "packageManager": "yarn@4.11.0"
 }

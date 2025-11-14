@@ -3,13 +3,14 @@
  * Updates a specific family tree
  */
 
+import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
 import type { FamilyTree, FamilyTreeUpdate } from '~/types/database';
 
 export default defineEventHandler(async (event) => {
   // Require user authentication
-  const user = await requireUserSession(event);
+  const user = await serverSupabaseUser(event);
 
-  if (!user) {
+  if (!user || !user.sub) {
     throw createError({
       statusCode: 401,
       message: 'Unauthorized - User not authenticated',
@@ -51,7 +52,7 @@ export default defineEventHandler(async (event) => {
       .from('family_trees')
       .update(updateData)
       .eq('id', treeId)
-      .eq('user_id', user.user.id)
+      .eq('user_id', user.sub)
       .select()
       .single();
 

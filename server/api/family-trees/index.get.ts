@@ -3,13 +3,14 @@
  * Fetches all family trees belonging to the authenticated user
  */
 
+import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server';
 import type { FamilyTree } from '~/types/database';
 
 export default defineEventHandler(async (event) => {
   // Require user authentication
-  const user = await requireUserSession(event);
+  const user = await serverSupabaseUser(event);
 
-  if (!user) {
+  if (!user || !user.sub) {
     throw createError({
       statusCode: 401,
       message: 'Unauthorized - User not authenticated',
@@ -19,11 +20,11 @@ export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseClient(event);
 
   try {
-    // Fetch all family trees for the user
+    // Fetch all family trees for the user (user.sub is the user ID from JWT)
     const { data, error } = await supabase
       .from('family_trees')
       .select('*')
-      .eq('user_id', user.user.id)
+      .eq('user_id', user.sub)
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false });
 
