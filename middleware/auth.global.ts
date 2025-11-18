@@ -14,7 +14,12 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     const { data: { session }, error } = await supabase.auth.getSession();
 
     if (session) {
-      console.log('[Auth Middleware] Session valid for:', session.user?.email);
+      // Only log PII in development
+      if (process.dev) {
+        console.log('[Auth Middleware] Session valid for:', session.user?.email);
+      } else {
+        console.log('[Auth Middleware] Session valid');
+      }
     } else {
       console.log('[Auth Middleware] No active session');
     }

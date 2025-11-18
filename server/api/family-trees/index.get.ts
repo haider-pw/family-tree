@@ -40,23 +40,29 @@ export default defineEventHandler(async (event) => {
     // Check user authentication with detailed logging
     let user;
     try {
-      // Log cookies to debug
-      const cookies = parseCookies(event);
-      console.log('Cookies present:', Object.keys(cookies));
-      console.log('Has sb-access-token:', cookies['sb-access-token'] ? 'Yes' : 'No');
-      console.log('Has sb-refresh-token:', cookies['sb-refresh-token'] ? 'Yes' : 'No');
+      // Debug logging only in development
+      if (process.dev) {
+        const cookies = parseCookies(event);
+        console.log('Cookies present:', Object.keys(cookies));
+        console.log('Has sb-access-token:', cookies['sb-access-token'] ? 'Yes' : 'No');
+        console.log('Has sb-refresh-token:', cookies['sb-refresh-token'] ? 'Yes' : 'No');
 
-      // Check for new cookie format
-      const supabaseCookies = Object.keys(cookies).filter(key => key.includes('supabase'));
-      console.log('Supabase cookies found:', supabaseCookies);
+        // Check for new cookie format
+        const supabaseCookies = Object.keys(cookies).filter(key => key.includes('supabase'));
+        console.log('Supabase cookies found:', supabaseCookies);
+      }
 
       user = await serverSupabaseUser(event);
-      console.log('User authenticated:', {
-        id: user?.id,
-        email: user?.email,
-        sub: user?.sub,
-        hasUser: !!user
-      });
+
+      // Only log PII in development to avoid exposure in production
+      if (process.dev) {
+        console.log('User authenticated:', {
+          id: user?.id,
+          email: user?.email,
+          sub: user?.sub,
+          hasUser: !!user
+        });
+      }
     } catch (authError: any) {
       console.error('Authentication check failed:', authError);
       console.error('Error details:', authError.message);
@@ -87,7 +93,9 @@ export default defineEventHandler(async (event) => {
       console.error('Profile check error:', profileError);
       // If profile doesn't exist, create it
       if (profileError.code === 'PGRST116') { // Row not found
-        console.log('Creating profile for user:', user.sub);
+        if (process.dev) {
+          console.log('Creating profile for user:', user.sub);
+        }
         const { error: createProfileError } = await supabase
           .from('profiles')
           .insert({
@@ -108,11 +116,11 @@ export default defineEventHandler(async (event) => {
     }
 
     // Fetch all family trees for the user
-    // Note: Using user.id instead of user.sub
+    // Note: Server uses user.sub here; client exposes the same identifier as user.id
     const { data, error } = await supabase
       .from('family_trees')
       .select('*')
-      .eq('user_id', user.sub) // Changed from user.sub to user.id
+      .eq('user_id', user.sub)
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false });
 
