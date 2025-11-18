@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue';
-import { createChart } from 'family-chart';
+import { createChart, handlers } from 'family-chart';
 import type { Datum, TreeDatum } from 'family-chart';
 
 const props = defineProps<{
@@ -57,6 +57,7 @@ const props = defineProps<{
 
 const chartContainer = ref<HTMLElement | null>(null);
 let familyChartInstance: ReturnType<typeof createChart> | null = null;
+let svgElement: SVGElement | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
 const renderChart = () => {
@@ -65,24 +66,15 @@ const renderChart = () => {
       // Use the proper family-chart API
       const cont = chartContainer.value;
 
-      // Get container dimensions
-      const containerRect = cont.getBoundingClientRect();
-      const width = containerRect.width || window.innerWidth;
-      const height = containerRect.height || window.innerHeight - 64;
-
+      // Create the chart instance
       familyChartInstance = createChart(cont, props.familyData);
 
-      // Configure chart dimensions and spacing
+      // Configure chart spacing and depth
       familyChartInstance
         .setCardXSpacing(280)
         .setCardYSpacing(150)
         .setAncestryDepth(props.ancestryDepth)
-        .setProgenyDepth(props.progenyDepth)
-        .setChartDim({ w: width, h: height })
-        .setCenterToScreen(true)
-        .setCompact(false)
-        .setZoomBehavior(true)
-        .setScaleExtent([0.1, 3]);
+        .setProgenyDepth(props.progenyDepth);
 
       const cardHtml = (d: TreeDatum) => {
         // d.data contains the nested data object from our JSON
@@ -119,47 +111,44 @@ const renderChart = () => {
         .setCardInnerHtmlCreator(cardHtml)
         .setOnCardClick((d: TreeDatum) => {
           familyChartInstance?.updateMainId(d.data.id);
-          familyChartInstance?.updateTree({ initial: false, transition_time: 500 });
+          familyChartInstance?.updateTree({ tree_position: 'main_to_middle', transition_time: 500 });
         });
 
-      familyChartInstance.updateTree({ initial: true });
+      // Get the SVG element for zoom handlers
+      svgElement = cont.querySelector('svg') as SVGElement;
 
-      // Center the tree after a short delay to ensure proper rendering
-      setTimeout(() => {
-        centerTree();
-      }, 100);
+      // Initial tree render with fit to container
+      familyChartInstance.updateTree({ initial: true, tree_position: 'fit' });
     } else {
       familyChartInstance.updateData(props.familyData);
+      familyChartInstance.updateTree({ tree_position: 'fit' });
     }
   }
 };
 
-// Zoom control methods
+// Zoom control methods using the handlers API
 const zoomIn = () => {
-  if (familyChartInstance) {
-    const currentZoom = familyChartInstance.getZoom() || 1;
-    familyChartInstance.setZoom(Math.min(currentZoom * 1.2, 3));
+  if (svgElement) {
+    handlers.manualZoom({ amount: 1.2, svg: svgElement, transition_time: 300 });
   }
 };
 
 const zoomOut = () => {
-  if (familyChartInstance) {
-    const currentZoom = familyChartInstance.getZoom() || 1;
-    familyChartInstance.setZoom(Math.max(currentZoom / 1.2, 0.1));
+  if (svgElement) {
+    handlers.manualZoom({ amount: 1 / 1.2, svg: svgElement, transition_time: 300 });
   }
 };
 
 const resetZoom = () => {
-  if (familyChartInstance) {
-    familyChartInstance.setZoom(1);
+  if (svgElement) {
+    handlers.zoomTo(svgElement, 1);
   }
 };
 
 const centerTree = () => {
   if (familyChartInstance) {
-    familyChartInstance.setCenterToScreen(true);
     familyChartInstance.updateTree({
-      initial: false,
+      tree_position: 'main_to_middle',
       transition_time: 500
     });
   }
@@ -167,14 +156,10 @@ const centerTree = () => {
 
 // Handle container resize
 const handleResize = () => {
-  if (chartContainer.value && familyChartInstance) {
-    const containerRect = chartContainer.value.getBoundingClientRect();
-    const width = containerRect.width || window.innerWidth;
-    const height = containerRect.height || window.innerHeight - 64;
-
-    familyChartInstance.setChartDim({ w: width, h: height });
+  if (familyChartInstance) {
+    // Re-fit the tree to the new container size
     familyChartInstance.updateTree({
-      initial: false,
+      tree_position: 'fit',
       transition_time: 300
     });
   }
@@ -207,6 +192,7 @@ onUnmounted(() => {
 watch(() => props.familyData, () => {
   if (familyChartInstance) {
     familyChartInstance.updateData(props.familyData);
+    familyChartInstance.updateTree({ tree_position: 'fit' });
   } else {
     renderChart();
   }
@@ -218,7 +204,7 @@ watch([() => props.ancestryDepth, () => props.progenyDepth], ([newAncestryDepth,
       .setAncestryDepth(newAncestryDepth)
       .setProgenyDepth(newProgenyDepth)
       .updateTree({
-        initial: false,
+        tree_position: 'main_to_middle',
         transition_time: 500
       });
   }
