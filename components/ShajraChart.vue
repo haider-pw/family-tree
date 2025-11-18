@@ -1,9 +1,51 @@
 <template>
-  <div ref="chartContainer" class="family-chart-container"/>
+  <div class="relative w-full h-full">
+    <div ref="chartContainer" class="family-chart-container"/>
+
+    <!-- Zoom Controls -->
+    <div class="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
+      <button
+        @click="zoomIn"
+        class="w-10 h-10 rounded-lg bg-white/90 dark:bg-surface-dark/90 border border-heritage-green/20 dark:border-heritage-gold/20 hover:bg-white dark:hover:bg-surface-dark transition-colors flex items-center justify-center shadow-lg"
+        aria-label="Zoom in"
+      >
+        <svg class="w-5 h-5 text-text-primary-light dark:text-text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+      </button>
+      <button
+        @click="zoomOut"
+        class="w-10 h-10 rounded-lg bg-white/90 dark:bg-surface-dark/90 border border-heritage-green/20 dark:border-heritage-gold/20 hover:bg-white dark:hover:bg-surface-dark transition-colors flex items-center justify-center shadow-lg"
+        aria-label="Zoom out"
+      >
+        <svg class="w-5 h-5 text-text-primary-light dark:text-text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+        </svg>
+      </button>
+      <button
+        @click="resetZoom"
+        class="w-10 h-10 rounded-lg bg-white/90 dark:bg-surface-dark/90 border border-heritage-green/20 dark:border-heritage-gold/20 hover:bg-white dark:hover:bg-surface-dark transition-colors flex items-center justify-center shadow-lg"
+        aria-label="Reset zoom"
+      >
+        <svg class="w-5 h-5 text-text-primary-light dark:text-text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </button>
+      <button
+        @click="centerTree"
+        class="w-10 h-10 rounded-lg bg-white/90 dark:bg-surface-dark/90 border border-heritage-green/20 dark:border-heritage-gold/20 hover:bg-white dark:hover:bg-surface-dark transition-colors flex items-center justify-center shadow-lg"
+        aria-label="Center tree"
+      >
+        <svg class="w-5 h-5 text-text-primary-light dark:text-text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 01.553-.894L9 2m0 18l6-3m-6 3V2m6 18l5.447-2.724A1 1 0 0021 16.382V5.618a1 1 0 00-.553-.894L15 2m0 18V2" />
+        </svg>
+      </button>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { createChart } from 'family-chart';
 import type { Datum, TreeDatum } from 'family-chart';
 
@@ -15,6 +57,7 @@ const props = defineProps<{
 
 const chartContainer = ref<HTMLElement | null>(null);
 let familyChartInstance: ReturnType<typeof createChart> | null = null;
+let resizeObserver: ResizeObserver | null = null;
 
 const renderChart = () => {
   if (chartContainer.value && props.familyData) {
@@ -22,13 +65,24 @@ const renderChart = () => {
       // Use the proper family-chart API
       const cont = chartContainer.value;
 
+      // Get container dimensions
+      const containerRect = cont.getBoundingClientRect();
+      const width = containerRect.width || window.innerWidth;
+      const height = containerRect.height || window.innerHeight - 64;
+
       familyChartInstance = createChart(cont, props.familyData);
 
+      // Configure chart dimensions and spacing
       familyChartInstance
         .setCardXSpacing(280)
         .setCardYSpacing(150)
         .setAncestryDepth(props.ancestryDepth)
-        .setProgenyDepth(props.progenyDepth);
+        .setProgenyDepth(props.progenyDepth)
+        .setChartDim({ w: width, h: height })
+        .setCenterToScreen(true)
+        .setCompact(false)
+        .setZoomBehavior(true)
+        .setScaleExtent([0.1, 3]);
 
       const cardHtml = (d: TreeDatum) => {
         // d.data contains the nested data object from our JSON
@@ -69,14 +123,85 @@ const renderChart = () => {
         });
 
       familyChartInstance.updateTree({ initial: true });
+
+      // Center the tree after a short delay to ensure proper rendering
+      setTimeout(() => {
+        centerTree();
+      }, 100);
     } else {
       familyChartInstance.updateData(props.familyData);
     }
   }
 };
 
+// Zoom control methods
+const zoomIn = () => {
+  if (familyChartInstance) {
+    const currentZoom = familyChartInstance.getZoom() || 1;
+    familyChartInstance.setZoom(Math.min(currentZoom * 1.2, 3));
+  }
+};
+
+const zoomOut = () => {
+  if (familyChartInstance) {
+    const currentZoom = familyChartInstance.getZoom() || 1;
+    familyChartInstance.setZoom(Math.max(currentZoom / 1.2, 0.1));
+  }
+};
+
+const resetZoom = () => {
+  if (familyChartInstance) {
+    familyChartInstance.setZoom(1);
+  }
+};
+
+const centerTree = () => {
+  if (familyChartInstance) {
+    familyChartInstance.setCenterToScreen(true);
+    familyChartInstance.updateTree({
+      initial: false,
+      transition_time: 500
+    });
+  }
+};
+
+// Handle container resize
+const handleResize = () => {
+  if (chartContainer.value && familyChartInstance) {
+    const containerRect = chartContainer.value.getBoundingClientRect();
+    const width = containerRect.width || window.innerWidth;
+    const height = containerRect.height || window.innerHeight - 64;
+
+    familyChartInstance.setChartDim({ w: width, h: height });
+    familyChartInstance.updateTree({
+      initial: false,
+      transition_time: 300
+    });
+  }
+};
+
 onMounted(() => {
   renderChart();
+
+  // Set up resize observer
+  if (chartContainer.value) {
+    resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    resizeObserver.observe(chartContainer.value);
+  }
+
+  // Also listen to window resize as a fallback
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  // Clean up
+  if (resizeObserver && chartContainer.value) {
+    resizeObserver.unobserve(chartContainer.value);
+    resizeObserver.disconnect();
+  }
+  window.removeEventListener('resize', handleResize);
 });
 
 watch(() => props.familyData, () => {
