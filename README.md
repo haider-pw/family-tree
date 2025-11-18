@@ -1,4 +1,4 @@
-# Shajra - Family Lineage Tracker
+# Shajra - Family Lineage Tracker!!!
 
 A modern web application for storing, updating, and visualizing family lineage, built with Nuxt 3, Vue 3, and Supabase.
 
