@@ -117,8 +117,37 @@ const renderChart = () => {
       // Get the SVG element for zoom handlers
       svgElement = cont.querySelector('svg') as SVGElement;
 
+      // Set explicit SVG dimensions to fill container
+      if (svgElement) {
+        const containerRect = cont.getBoundingClientRect();
+        svgElement.setAttribute('width', '100%');
+        svgElement.setAttribute('height', '100%');
+        svgElement.style.width = '100%';
+        svgElement.style.height = '100%';
+
+        // Set viewBox to ensure proper scaling
+        const viewBoxWidth = containerRect.width || window.innerWidth;
+        const viewBoxHeight = containerRect.height || (window.innerHeight - 100);
+        svgElement.setAttribute('viewBox', `0 0 ${viewBoxWidth} ${viewBoxHeight}`);
+        svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      }
+
       // Initial tree render with fit to container
       familyChartInstance.updateTree({ initial: true, tree_position: 'fit' });
+
+      // Force a re-fit after a delay to ensure proper sizing
+      setTimeout(() => {
+        if (svgElement && familyChartInstance) {
+          const containerRect = cont.getBoundingClientRect();
+          // Use handlers to manually fit the tree
+          handlers.treeFit({
+            svg: svgElement,
+            svg_dim: { w: containerRect.width, h: containerRect.height },
+            tree_dim: { w: containerRect.width, h: containerRect.height },
+            transition_time: 500
+          });
+        }
+      }, 100);
     } else {
       familyChartInstance.updateData(props.familyData);
       familyChartInstance.updateTree({ tree_position: 'fit' });
@@ -140,28 +169,63 @@ const zoomOut = () => {
 };
 
 const resetZoom = () => {
-  if (svgElement) {
+  if (svgElement && chartContainer.value) {
+    // Reset zoom and fit tree to container
     handlers.zoomTo(svgElement, 1);
+    const containerRect = chartContainer.value.getBoundingClientRect();
+    handlers.treeFit({
+      svg: svgElement,
+      svg_dim: { w: containerRect.width, h: containerRect.height },
+      tree_dim: { w: containerRect.width * 0.9, h: containerRect.height * 0.9 }, // Use 90% of container for better fit
+      transition_time: 300
+    });
   }
 };
 
 const centerTree = () => {
-  if (familyChartInstance) {
+  if (familyChartInstance && svgElement && chartContainer.value) {
+    // First update tree position
     familyChartInstance.updateTree({
       tree_position: 'main_to_middle',
       transition_time: 500
     });
+
+    // Then ensure proper fit
+    setTimeout(() => {
+      const containerRect = chartContainer.value!.getBoundingClientRect();
+      handlers.treeFit({
+        svg: svgElement,
+        svg_dim: { w: containerRect.width, h: containerRect.height },
+        tree_dim: { w: containerRect.width * 0.9, h: containerRect.height * 0.9 },
+        transition_time: 300
+      });
+    }, 100);
   }
 };
 
 // Handle container resize
 const handleResize = () => {
-  if (familyChartInstance) {
+  if (familyChartInstance && svgElement && chartContainer.value) {
+    const containerRect = chartContainer.value.getBoundingClientRect();
+
+    // Update SVG dimensions
+    svgElement.setAttribute('viewBox', `0 0 ${containerRect.width} ${containerRect.height}`);
+
     // Re-fit the tree to the new container size
     familyChartInstance.updateTree({
       tree_position: 'fit',
       transition_time: 300
     });
+
+    // Ensure proper fit with handlers
+    setTimeout(() => {
+      handlers.treeFit({
+        svg: svgElement,
+        svg_dim: { w: containerRect.width, h: containerRect.height },
+        tree_dim: { w: containerRect.width * 0.9, h: containerRect.height * 0.9 },
+        transition_time: 300
+      });
+    }, 100);
   }
 };
 
@@ -215,10 +279,19 @@ watch([() => props.ancestryDepth, () => props.progenyDepth], ([newAncestryDepth,
 .family-chart-container {
   @apply w-full h-full relative overflow-auto;
   background: linear-gradient(135deg, #FDFBF7 0%, #F5F3EE 100%);
+  min-height: 600px;
 }
 
 :global(.dark) .family-chart-container {
   background: linear-gradient(135deg, #1A1F1C 0%, #243831 100%);
+}
+
+/* Ensure SVG fills the container and has smooth transitions */
+.family-chart-container :deep(svg) {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 600px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Custom scrollbar for chart area */
@@ -237,11 +310,6 @@ watch([() => props.ancestryDepth, () => props.progenyDepth], ([newAncestryDepth,
 
 .family-chart-container::-webkit-scrollbar-thumb:hover {
   @apply bg-heritage-green/30 dark:bg-heritage-gold/30;
-}
-
-/* Smooth transitions for chart updates */
-.family-chart-container :deep(svg) {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Glass Morphism Card Styles */
