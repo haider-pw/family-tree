@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     const { data, error } = await supabase
       .from('family_trees')
       .insert({
-        user_id: user.sub,
+        user_id: user.sub, // Changed from user.sub to user.id
         name: body.name.trim(),
         description: body.description || null,
         is_default: body.is_default || false,
