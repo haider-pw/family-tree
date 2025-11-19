@@ -77,9 +77,16 @@ const renderChart = () => {
         .setProgenyDepth(props.progenyDepth);
 
       const cardHtml = (d: TreeDatum) => {
+        // Safety checks for data structure
+        if (!d || !d.data) {
+          console.warn('Card render: Invalid data structure', d);
+          return '<div class="node-card">Invalid data</div>';
+        }
+
         // d.data contains the nested data object from our JSON
-        const personData = d.data.data;
-        const isMain = familyChartInstance?.getMainDatum().id === d.data.id;
+        const personData = d.data.data || {};
+        const mainDatum = familyChartInstance?.getMainDatum();
+        const isMain = mainDatum && (mainDatum.id === d.data.id || mainDatum.id === d.id);
 
         return `
           <div class="node-card glass-card" data-gender="${personData.gender || 'M'}" data-main="${isMain}">
@@ -87,7 +94,7 @@ const renderChart = () => {
             <div class="card-inner">
               ${personData.img ? `
                 <div class="avatar">
-                  <img src="${personData.img}" alt="${personData.name}" />
+                  <img src="${personData.img}" alt="${personData.name || 'Unknown'}" />
                 </div>
               ` : `
                 <div class="avatar avatar-placeholder">
@@ -110,8 +117,17 @@ const renderChart = () => {
         })
         .setCardInnerHtmlCreator(cardHtml)
         .setOnCardClick((d: TreeDatum) => {
-          familyChartInstance?.updateMainId(d.data.id);
-          familyChartInstance?.updateTree({ tree_position: 'main_to_middle', transition_time: 500 });
+          // Safety check for data structure
+          if (!d || !d.data) {
+            console.warn('Card click: Invalid data structure', d);
+            return;
+          }
+
+          const nodeId = d.data.id || d.id;
+          if (nodeId && familyChartInstance) {
+            familyChartInstance.updateMainId(nodeId);
+            familyChartInstance.updateTree({ tree_position: 'main_to_middle', transition_time: 500 });
+          }
         });
 
       // Get the SVG element for zoom handlers
