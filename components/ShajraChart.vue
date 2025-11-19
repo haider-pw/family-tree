@@ -116,17 +116,28 @@ const renderChart = () => {
           h: 96
         })
         .setCardInnerHtmlCreator(cardHtml)
-        .setOnCardClick((d: TreeDatum) => {
-          // Safety check for data structure
-          if (!d || !d.data) {
-            console.warn('Card click: Invalid data structure', d);
-            return;
+        .setOnCardClick(function(this: any, event: any) {
+          // In family-chart 0.9.0, the event might be passed instead of datum
+          // Try to get the datum from D3's bound data on the element
+          const datum = event?.data || event || this.__data__;
+
+          if (process.dev) {
+            console.log('Card click - datum:', datum);
+            console.log('Card click - this:', this);
+            console.log('Card click - event:', event);
           }
 
-          const nodeId = d.data.id || d.id;
+          // Try different ways to get the ID based on the data structure
+          let nodeId;
+          if (datum && typeof datum === 'object') {
+            nodeId = datum.data?.id || datum.id;
+          }
+
           if (nodeId && familyChartInstance) {
             familyChartInstance.updateMainId(nodeId);
             familyChartInstance.updateTree({ tree_position: 'main_to_middle', transition_time: 500 });
+          } else {
+            console.warn('Could not determine node ID from click event');
           }
         });
 
